@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="de">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="WorkTime">
+<meta name="theme-color" content="#147ef5">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f4f5f7">
+<title>WorkTime – Version 2</title>
+<style>
+:root{--bg:#f2f3f5;--card:#fff;--text:#15171a;--muted:#747980;--line:#e2e4e8;--blue:#147ef5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Arial,sans-serif;color:var(--text)}
+.app{max-width:520px;margin:auto;min-height:100vh;padding-bottom:92px}
+header{position:sticky;top:0;z-index:4;background:rgba(242,243,245,.95);backdrop-filter:blur(18px);padding:18px 18px 12px;border-bottom:1px solid #00000008}
+h1{font-size:29px;margin:0 0 4px}.date{font-size:14px;color:var(--muted)}
+.section{padding:14px}.card{background:#fff;border-radius:17px;padding:15px;margin-bottom:12px;box-shadow:0 1px 3px #0000000b}.row{display:flex;align-items:center;gap:12px}.grow{flex:1}
+.dot{width:14px;height:14px;border-radius:50%;flex:none}.name{font-weight:700}.sub{font-size:13px;color:var(--muted);margin-top:3px}.small{font-size:12px;color:var(--muted)}
+button{border:0;border-radius:12px;padding:10px 13px;font-weight:650;background:#eef0f3;color:#202328}.primary{background:var(--blue);color:#fff}.danger{background:#ffe8e8;color:#c62828}
+.segment{display:flex;background:#e5e7ea;border-radius:11px;padding:3px;margin-bottom:14px}.segment button{flex:1;background:transparent;padding:8px}.segment .sel{background:#fff;box-shadow:0 1px 3px #0002}
+.fab{position:fixed;right:22px;bottom:91px;width:56px;height:56px;border-radius:28px;background:#147ef5;color:#fff;font-size:28px;box-shadow:0 5px 20px #0002;z-index:6}
+nav{position:fixed;bottom:0;left:0;right:0;height:78px;background:rgba(255,255,255,.97);backdrop-filter:blur(18px);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:5}
+nav button{flex:1;max-width:125px;background:transparent;color:#747980;font-size:11px;padding:9px 2px}nav button.active{color:var(--blue)}.icon{font-size:20px;display:block;margin-bottom:3px}
+input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:#fff}label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
+.overlay{position:fixed;inset:0;background:#0005;display:none;align-items:flex-end;z-index:10}.sheet{background:#fff;width:100%;max-width:520px;margin:auto;border-radius:22px 22px 0 0;padding:20px 18px 30px;max-height:88vh;overflow:auto}
+.colors{display:flex;gap:10px;flex-wrap:wrap}.color{width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #bbb}.selected{box-shadow:0 0 0 3px #111}
+.empty{text-align:center;color:var(--muted);padding:38px 10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.stat{font-size:25px;font-weight:800}
+.swipe{display:flex;gap:7px}.swipe button{padding:8px 10px;font-size:12px}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.day{text-align:center;font-size:11px;color:var(--muted);padding:6px 0}.cell{min-height:52px;background:#fff;border-radius:9px;padding:6px;font-size:11px}.today{outline:2px solid var(--blue)}.bar{height:5px;border-radius:4px;margin-top:5px}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+</style>
+</head>
+<body>
+<div class="app">
+<header><h1 id="title">Übersicht</h1><div class="date" id="date"></div></header>
+<main id="main" class="section"></main>
+<button class="fab" id="fab" onclick="openCustomer()">+</button>
+<nav>
+<button onclick="show('home')" id="n-home" class="active"><span class="icon">◷</span>Übersicht</button>
+<button onclick="show('customers')" id="n-customers"><span class="icon">👥</span>Kunden</button>
+<button onclick="show('calendar')" id="n-calendar"><span class="icon">▦</span>Kalender</button>
+<button onclick="show('reports')" id="n-reports"><span class="icon">▤</span>Auswertung</button>
+</nav>
+</div>
+
+<div class="overlay" id="overlay"><div class="sheet">
+<h2 id="modalTitle" style="margin:0 0 8px">Neuer Kunde</h2>
+<label>Kundenname</label><input id="cname" placeholder="z. B. Deutsche Glasfaser">
+<label>Farbe</label><div class="colors" id="colors"></div>
+<label>Projekt</label><input id="cproject" placeholder="z. B. Dortmund">
+<label>Aufgabe</label><input id="ctask" placeholder="z. B. NE4 Montage">
+<div style="display:flex;gap:10px;margin-top:18px"><button class="grow" onclick="closeModal()">Abbrechen</button><button class="grow primary" onclick="saveCustomer()">Speichern</button></div>
+</div></div>
+
+<script>
+const palette=['#e53935','#fb8c00','#fdd835','#43a047','#00acc1','#1e88e5','#3949ab','#8e24aa','#d81b60','#6d4c41','#546e7a','#111'];
+let data=JSON.parse(localStorage.getItem('worktime_v2')||'null')||{customers:[],entries:[]};
+let selectedColor=palette[5], editingId=null, active=null, page='home';
+const $=id=>document.getElementById(id);
+function persist(){localStorage.setItem('worktime_v2',JSON.stringify(data))}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function fmt(ms){let m=Math.max(0,Math.floor(ms/60000)),h=Math.floor(m/60),mm=m%60;return `${h} Std. ${String(mm).padStart(2,'0')} Min.`}
+function show(p){page=p;document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));$('n-'+p).classList.add('active');$('title').textContent={home:'Übersicht',customers:'Kunden',calendar:'Kalender',reports:'Auswertung'}[p];$('fab').style.display=p==='customers'?'block':'none';render()}
+function openCustomer(id=null){
+ editingId=id; $('modalTitle').textContent=id?'Kunde bearbeiten':'Neuer Kunde';
+ let c=id?data.customers.find(x=>x.id===id):null;
+ $('cname').value=c?.name||'';$('cproject').value=c?.project||'';$('ctask').value=c?.task||'';selectedColor=c?.color||palette[5];renderColors();$('overlay').style.display='flex';
+}
+function closeModal(){$('overlay').style.display='none'}
+function renderColors(){$('colors').innerHTML=palette.map(c=>`<span class="color ${c===selectedColor?'selected':''}" style="background:${c}" onclick="selectedColor='${c}';renderColors()"></span>`).join('')}
+function saveCustomer(){
+ let name=$('cname').value.trim();if(!name)return alert('Bitte Kundennamen eingeben.');
+ if(editingId){let c=data.customers.find(x=>x.id===editingId);Object.assign(c,{name,color:selectedColor,project:$('cproject').value.trim(),task:$('ctask').value.trim()})}
+ else data.customers.push({id:Date.now(),name,color:selectedColor,project:$('cproject').value.trim(),task:$('ctask').value.trim()});
+ persist();closeModal();show('customers')
+}
+function removeCustomer(id){if(confirm('Kunden wirklich löschen?')){data.customers=data.customers.filter(c=>c.id!==id);data.entries=data.entries.filter(e=>e.cid!==id);persist();render()}}
+function start(id){let c=data.customers.find(x=>x.id===id);if(!c)return;active={cid:id,name:c.name,color:c.color,start:Date.now()};render()}
+function stop(){if(!active)return;data.entries.push({...active,end:Date.now()});active=null;persist();render()}
+function entryCard(e){
+ let c=data.customers.find(x=>x.id===e.cid)||{};return `<div class="card"><div class="row"><span class="dot" style="background:${c.color||'#999'}"></span><div class="grow"><div class="name">${esc(c.name)}</div><div class="sub">${esc(c.project)} ${c.task?'· '+esc(c.task):''}</div><div style="margin-top:8px">${new Date(e.start).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})} – ${new Date(e.end).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})} · <b>${fmt(e.end-e.start)}</b></div></div></div></div>`
+}
+function render(){
+ let m=$('main');
+ if(page==='customers'){
+  m.innerHTML=data.customers.length?data.customers.map(c=>`<div class="card"><div class="row"><span class="dot" style="background:${c.color}"></span><div class="grow"><div class="name">${esc(c.name)}</div><div class="sub">${esc(c.project||'Kein Projekt')} ${c.task?'· '+esc(c.task):''}</div></div><button onclick="start(${c.id})">▶</button></div><div class="swipe" style="justify-content:flex-end;margin-top:11px"><button onclick="openCustomer(${c.id})">Bearbeiten</button><button class="danger" onclick="removeCustomer(${c.id})">Löschen</button></div></div>`).join(''):'<div class="empty">Noch keine Kunden.<br>Mit + kannst du deinen ersten Kunden anlegen.</div>';
+ } else if(page==='calendar') renderCalendar();
+ else if(page==='reports'){
+  let total=data.entries.reduce((s,e)=>s+e.end-e.start,0);
+  m.innerHTML=`<div class="grid"><div class="card"><div class="small">Gesamtzeit</div><div class="stat">${fmt(total)}</div></div><div class="card"><div class="small">Einträge</div><div class="stat">${data.entries.length}</div></div></div>`+
+  data.customers.map(c=>{let t=data.entries.filter(e=>e.cid===c.id).reduce((s,e)=>s+e.end-e.start,0);return `<div class="card"><div class="row"><span class="dot" style="background:${c.color}"></span><div class="grow"><b>${esc(c.name)}</b><div class="sub">${fmt(t)} · ${data.entries.filter(e=>e.cid===c.id).length} Einträge</div></div></div></div>`}).join('');
+ } else {
+  let today=data.entries.filter(e=>new Date(e.start).toDateString()===new Date().toDateString());
+  let html='';
+  if(active)html+=`<div class="card" style="border:2px solid ${active.color}"><div class="row"><span class="dot" style="background:${active.color}"></span><div class="grow"><div class="name">${esc(active.name)}</div><div class="sub">Arbeitszeit läuft…</div><div id="live" style="font-size:18px;font-weight:750;margin-top:6px">00:00</div></div><button class="danger" onclick="stop()">■ Stop</button></div></div>`;
+  html+=today.length?today.slice().reverse().map(entryCard).join(''):'<div class="empty">Heute noch keine Arbeitszeit erfasst.<br><br>Gehe zu <b>Kunden</b>, um die Zeit zu starten.</div>';
+  m.innerHTML=html;
+ }
+}
+function renderCalendar(){
+ let now=new Date(),y=now.getFullYear(),mo=now.getMonth(),first=new Date(y,mo,1),days=new Date(y,mo+1,0).getDate(),start=(first.getDay()+6)%7;
+ let html='<div class="segment"><button class="sel">Monat</button><button onclick="show(\'home\')">Heute</button></div><div class="calendar">';
+ ['Mo','Di','Mi','Do','Fr','Sa','So'].forEach(x=>html+=`<div class="day"><b>${x}</b></div>`);
+ for(let i=0;i<start;i++)html+='<div></div>';
+ for(let d=1;d<=days;d++){let date=new Date(y,mo,d),es=data.entries.filter(e=>new Date(e.start).toDateString()===date.toDateString());let bars=es.map(e=>{let c=data.customers.find(x=>x.id===e.cid);return c?`<div class="bar" style="background:${c.color}"></div>`:''}).join('');html+=`<div class="cell ${date.toDateString()===now.toDateString()?'today':''}"><b>${d}</b>${bars}</div>`}
+ html+='</div><hr><div class="small">Farben zeigen den jeweiligen Kunden.</div>'; $('main').innerHTML=html;
+}
+$('date').textContent=new Intl.DateTimeFormat('de-DE',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date());
+renderColors();render();
+setInterval(()=>{if(active){let x=$('live');if(x)x.textContent=fmt(Date.now()-active.start)}},1000);
+</script>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script></body></html>

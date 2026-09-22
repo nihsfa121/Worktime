@@ -1,0 +1,10 @@
+{
+  "name": "WorkTime – Kunden & Zeiterfassung",
+  "short_name": "WorkTime",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f2f3f5",
+  "theme_color": "#147ef5",
+  "orientation": "portrait",
+  "icons": []
+}
